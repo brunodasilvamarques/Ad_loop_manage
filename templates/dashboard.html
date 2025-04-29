@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div style="text-align:right; margin-bottom:10px;">
+    <form method="GET" action="/download_csv">
+        <button type="submit">Download CSV</button>
+    </form>
+</div>
+{% if unconfigured %}
+<h3 style="color:#2D6AFF">Unconfigured Kiosks</h3>
+<div style="margin: 0 10px;">
+<table>
+    <tr>
+		<th>Pi ID</th>
+		<th>Status</th>
+		<th>Actions</th>
+	</tr>
+	{% for pi_id, info in unconfigured %}
+	<tr>
+		<td>{{ pi_id }}</td>
+		<td>{% if (now - info.last_seen|to_datetime).total_seconds() < heartbeat_timeout %}🟢 Running{% else %}🔴 Not Running{% endif %}</td>
+		<td>
+			<form method="POST" action="/configure">
+				<input type="hidden" name="pi_id" value="{{ pi_id }}">
+				<input type="text" name="kiosk_name" placeholder="Kiosk Name" required>
+				<input type="text" name="country" placeholder="Country" required>
+				<button type="submit">Configure</button>
+			</form>
+		</td>
+	</tr>
+	{% endfor %}
+</table>
+{% endif %}
+{% for country, kiosks in configured.items() %}
+<h3 style="color:#2D6AFF">{{ country }}</h3>
+{% for pi_id, kiosk_name, info in kiosks %}
+    <h4 style="color:white; margin-bottom:10px;">
+        {{ kiosk_name }}
+        {% if (now - info.last_seen|to_datetime).total_seconds() < heartbeat_timeout %}
+            🟢 Running
+        {% else %}
+            🔴 Not Running
+        {% endif %}
+        | Version: {{ info.software_version }}
+    </h4>
+
+    <div style="margin: 0 20px 30px 20px;">
+    <table>
+        <tr>
+            <th>Video Name</th>
+            <th>Play Count</th>
+            <th>Total Play Duration</th>
+            <th>First Play</th>
+            <th>Last Play</th>
+            <th>Total Play Days</th>
+            <th>Actions</th>
+        </tr>
+        {% for video in info.videos %}
+        <tr>
+            <td>{{ video.filename }}</td>
+            <td>{{ video.play_count }}</td>
+            <td>
+                {% set total_secs = video.total_play_duration|default(0) %}
+                {% set hours = (total_secs // 3600) %}
+                {% set minutes = (total_secs % 3600) // 60 %}
+                {% set seconds = total_secs % 60 %}
+                {{ "%02d:%02d:%02d"|format(hours, minutes, seconds) }}
+            </td>
+            <td>{{ video.first_play }}</td>
+            <td>{{ video.last_play }}</td>
+            <td>
+                {% if video.first_play and video.last_play %}
+                    {% set first_play = video.first_play|to_datetime %}
+                    {% set last_play = video.last_play|to_datetime %}
+                    {{ (last_play - first_play).days }}
+                {% else %}
+                    N/A
+                {% endif %}
+            </td>
+            <td>
+                {% if is_admin %}
+                    <form method="POST" action="/reset_video/{{ pi_id }}/{{ video.filename }}" style="display:inline;">
+                        <button type="submit">Reset</button>
+                    </form>
+                    <form method="POST" action="/delete_video/{{ pi_id }}/{{ video.filename }}" style="display:inline;">
+                        <button type="submit">Delete</button>
+                    </form>
+                {% else %} N/A {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    </div>
+{% endfor %}
+{% endfor %}
+{% endblock %}
