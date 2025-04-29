@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: changebox-dashboard
+    env: python
+    plan: free
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "python3 Ad_Loop_Manage_Server.py"
+    envVars:
+      - key: PORT
+        value: 5000
+
+
