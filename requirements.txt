@@ -1,0 +1,5 @@
+Flask
+gunicorn
+pytz
+msal
+requests
